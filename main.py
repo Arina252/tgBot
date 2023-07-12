@@ -1,11 +1,14 @@
 import telebot
 from telebot import types
-
-
+import requests
+import json
+import random
+from googletrans import Translator
 
 TOKEN = '6317653802:AAHTP7Dv-4D-v0CIIinmdzq37I_CuGoj6_Q'
 bot = telebot.TeleBot(TOKEN)
-
+API = '3d33876b8a0d36c983f067a3c1e91c0a'
+URL = 'https://api.telegram.org/bot'
 
 keyboard = types.ReplyKeyboardMarkup(row_width=2)
 translate_button = types.KeyboardButton('Переводчик')
@@ -20,7 +23,7 @@ keyboard.add(translate_button, weather_button, calculator_button, mems_button, i
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(message.chat.id, 'Привет, чем могу помочь?', reply_markup=keyboard)
-
+    bot.register_next_step_handler(message, on_click)
 
 
 # Функция отображения кнопок
@@ -29,6 +32,22 @@ def buttons(message):
     bot.send_message(message.chat.id, "Выберите действие на панели команд", reply_markup=keyboard)
 
 
+# Функция распознавания нажатия на кнопку и отправка в нужную функцию
+@bot.message_handler(func=lambda m: True)
+def on_click(message):
+    if message.text == 'Переводчик':
+        bot.send_message(message.chat.id, 'Введите слово для перевода:')
+        bot.register_next_step_handler(message, translate)
+    if message.text == 'Калькулятор':
+        bot.send_message(message.chat.id, 'Введите выражение для вычисления:')
+        bot.register_next_step_handler(message, calculator)
+    if message.text == 'Погода':
+        bot.send_message(message.chat.id, 'Введите город:')
+        bot.register_next_step_handler(message, weather)
+    if message.text == 'Мем дня':
+        mem(message)
+    if message.text == 'Инфо':
+        info(message)
 
 
 # Информация о разработчиках
@@ -39,13 +58,29 @@ def info(message):
                      parse_mode='HTML')
 
 
+# Функция перевода текста
+def translate(message):
+    if message.text != '/translate':
+        text_to_translate = message.text
+        translator = Translator(service_urls=['translate.google.com'])
+        translation = translator.translate(text_to_translate, src='en', dest='ru')
+        bot.reply_to(message, translation.text)
+    else:
+        bot.send_message(message.chat.id, 'Пожалуйста, введите текст для перевода.')
+    buttons(message)
 
 
-
-
-
-
-
-
+# Функция калькулятор
+def calculator(message):
+    if message.text != '/calculator':
+        expression = message.text
+        try:
+            result = eval(expression)
+            bot.reply_to(message, f'Результат: {result}')
+        except Exception as e:
+            bot.send_message(message.chat.id, f'Произошла ошибка: {str(e)}')
+    else:
+        bot.send_message(message.chat.id, 'Введите выражение для вычисления:')
+    buttons(message)
 
 bot.polling()
